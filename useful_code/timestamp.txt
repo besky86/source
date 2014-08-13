@@ -1,0 +1,109 @@
+    public static CharSequence getRelativeTimeSpanString(Context context,long startTime,long minResolution,boolean showExtertime) {
+        return getRelativeTimeSpanString(context,startTime, System.currentTimeMillis(), minResolution,showExtertime);
+    }
+
+    /**
+     * 
+     * @param context
+     * @param time
+     * @param now
+     * @param minResolution
+     * @param showExtertime
+     * @return
+     */
+    public static CharSequence getRelativeTimeSpanString(Context context,long time, long now, long minResolution,boolean showExtertime) {
+        Resources r = context.getResources();
+        
+        boolean past = (now >= time);
+        long duration = Math.abs(now - time);
+
+        int resId=0;
+        long count=0;
+        String format="";
+        
+        if (duration < DateUtils.MINUTE_IN_MILLIS && minResolution < DateUtils.MINUTE_IN_MILLIS) {//一分钟以内显示刚刚
+            return context.getString(R.string.now);
+        } 
+        
+        if (duration < DateUtils.HOUR_IN_MILLIS && minResolution < DateUtils.HOUR_IN_MILLIS) {//小于1个小时，显示多少分钟以内
+            count = duration / DateUtils.MINUTE_IN_MILLIS;
+            if (past) {
+                    resId = R.plurals.num_minutes_ago;
+            } else {
+                    resId = R.plurals.in_num_minutes;
+            }
+        	format = r.getQuantityString(resId, (int) count);
+        	return String.format(format, count).replace(" ", "");
+        } 
+
+        if (duration < DateUtils.DAY_IN_MILLIS && minResolution < DateUtils.DAY_IN_MILLIS) {//小于24小时
+        	
+        	boolean toDay = getDate(context,now).equals(getDate(context,time));//是否与现在时间同一天
+        	
+        	StringBuilder date = new StringBuilder();
+        	String strTime = formatDayTimeStampString(context,time);
+        	
+        	if(toDay){//今天
+        		if(showExtertime){
+        			date.append(strTime);
+        		}
+        		else{
+            		date.append(context.getString(R.string.today));
+        		}
+        	}else if(past){//昨天 XX点
+        		date.append(context.getString(R.string.yesterday));
+        	}else{
+        		date.append(context.getString(R.string.tomorrow));
+        	}
+        	
+        	return date.toString();
+        }
+        
+        
+        if (duration < 2*DateUtils.DAY_IN_MILLIS && minResolution < DateUtils.DAY_IN_MILLIS) {//小于48小时显示昨天或明天
+        	StringBuilder date = new StringBuilder();
+            if (past) {//可能出现  昨天**点 或 前天**点
+            	boolean yesterday = getDate(context,now-DateUtils.DAY_IN_MILLIS).equals(getDate(context,time));//是否是昨天
+            	
+            	if(yesterday){
+            		date.append(context.getString(R.string.yesterday));
+            	}else{
+            		date.append(context.getString(R.string.bef_yesterday));
+            	}
+            } else {//可能出现  明天**点 或 后天**点
+            	boolean tomorrow = getDate(context,now+DateUtils.DAY_IN_MILLIS).equals(getDate(context,time));//是否是明天
+            	
+            	if(tomorrow){
+            		date.append(context.getString(R.string.tomorrow));
+            	}else{
+            		date.append(context.getString(R.string.after_tomorrow));
+            	}
+            }
+            return date.toString();
+        }
+        
+        if (duration < 3*DateUtils.DAY_IN_MILLIS  && minResolution < DateUtils.DAY_IN_MILLIS ) {//小于72小时，可能出现前天**点 及 后天**点
+        	StringBuilder date = new StringBuilder();
+            if (past) {
+            	boolean bef_yesterday = getDate(context,now-2*DateUtils.DAY_IN_MILLIS).equals(getDate(context,time));//是否是前天
+            	
+            	if(bef_yesterday){//前天
+            		date.append(context.getString(R.string.bef_yesterday));
+            	}else{//比前天更早的时间，显示具体日期就可         
+            		date.append(formatTimeStampString(context, time,0, false));
+            	}
+            	
+            } else {
+            	boolean after_tomorrow = getDate(context,now+2*DateUtils.DAY_IN_MILLIS).equals(getDate(context,time));//是否是后天
+            	
+            	if(after_tomorrow){
+            		date.append(context.getString(R.string.after_tomorrow));
+            	}else{//比后天更晚的时间，显示具体日期就可
+            		date.append(formatTimeStampString(context, time, 0,false));
+            	}
+            }
+            return date.toString();
+        } else {//其它的显示具体日期了
+        	return formatTimeStampString(context, time,0,false);
+        }
+    }
