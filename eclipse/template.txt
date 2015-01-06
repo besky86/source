@@ -1,0 +1,22 @@
+
+cursor	将编辑器的光标放在这个位置。	N/A
+date	插入当前日期。	Oct 20, 2009
+dollar	插入货币的文字符号。	$
+elemType	尝试猜测具有给定 ID 的这个元素的类型。	MyType
+enclosing_method	插入模板被插入其中的那个方法的名称。	method()
+enclosing_method_arguments	为包围方法插入参数。	arg1, arg2
+enclosing_package	插入当前类的包名。	com.example.ui
+enclosing_project	插入包含所编辑的这个类的项目的名称。	myProject
+enclosing_type	插入正在编辑的类型（类）的名称。	MyType
+exception_variable_name	插入一个异常变量名称，进行最佳猜测。	e, ioe
+file	文件的简称。	MyType.java
+import	如果尚未导入，那么针对给定类型插入一个导入声明。	import com.example.ui.MyOtherType
+importStatic	与 import 相同，只不过是静态导入。	import static com.example.ui.MyOtherType.*
+line_selection	将选中的行插入到这里。这对用模板包装行是很有用的。	以选中行作为主体的 do、while 循环
+primary_type_name	没有扩展名的文件简称。	MyType
+time	插入当前的时间。	9:09:35 a.m.
+todo	注释中的 TODO 标记。	TODO
+user	当前用户的名字。	ngood
+var	解析为本地变量，如果不只一个，就提供一个列表。	myvar
+word_selection	插入当前选中的单词。	N/A
+year	将现在的年份插入到代码中。	2009
