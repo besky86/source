@@ -1,0 +1,22 @@
+        public static boolean isEmailAddress(String address) {
+            if (TextUtils.isEmpty(address)) {
+                return false;
+            }
+
+            String s = extractAddrSpec(address);
+            Matcher match = Patterns.EMAIL_ADDRESS.matcher(s);
+            return match.matches();
+        }
+		
+		
+        public static String extractAddrSpec(String address) {
+            Matcher match = NAME_ADDR_EMAIL_PATTERN.matcher(address);
+
+            if (match.matches()) {
+                return match.group(2);
+            }
+            return address;
+        }
+		
+		        public static final Pattern NAME_ADDR_EMAIL_PATTERN =
+                Pattern.compile("\\s*(\"[^\"]*\"|[^<>\"]+)\\s*<([^<>]+)>\\s*");
