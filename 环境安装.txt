@@ -1,0 +1,8 @@
+tornado*
+redis*
+easyinstall
+pymongo
+pip
+pycurl
+Virtualenv
+nw_database
