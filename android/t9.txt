@@ -1,0 +1,111 @@
+    private void addSortkeyNum2(String sortKey, SearchContactsBean contactBean)
+    {
+        if (sortKey != null) {
+            sortKey = sortKey.trim();
+        }
+        if (!TextUtils.isEmpty(sortKey)) {
+            char[] ch = sortKey.toCharArray();
+            final int length = ch.length;
+            final StringBuffer full = new StringBuffer(length);
+            final StringBuffer simple = new StringBuffer(3);
+            boolean hasChar = Boolean.TRUE;
+            int pos = 0;
+            char c = 0;
+            int num = 0;
+            char t = 0;
+            ArrayList<CharBean> charBeans = new ArrayList<CharBean>();
+            for (int i = 0; i < length; i++) {
+                c = ch[i];
+                // Êý×Ö»òÕß×ÖÄ¸
+                if ((c > 47 && c < 58) || (c > 64 && c < 91) || (c > 96 && c < 123)) {
+                    num = tranWord2Number(c);
+                    if (hasChar) {
+                        hasChar = Boolean.FALSE;
+                        if (t > 0) {
+                            String str = full.substring(pos, full.length());
+                            pos = full.length();
+                            CharBean chBean = new CharBean();
+                            chBean.firstChar = String.valueOf(t);
+                            chBean.thirdChina = str;
+                            charBeans.add(chBean);
+                            t = 0;
+                        }
+                        simple.append(num);
+                        t = c;
+                    }
+                    full.append(num);
+                } else if (c != 32) {//32 is space
+                    hasChar = Boolean.TRUE;
+                    if (c < 0x4e00 || c > 0x9fa5) {
+                        CharBean chBean = new CharBean();
+                        chBean.firstChar = "";
+                        chBean.thirdChina = "";
+                        charBeans.add(chBean);
+                    }
+                }
+            }
+
+            if (t > 0) {
+                String str = full.substring(pos, full.length());
+                CharBean chBean = new CharBean();
+                chBean.firstChar = String.valueOf(t);
+                chBean.thirdChina = str;
+                charBeans.add(chBean);
+            }
+
+            if (full.length() > 0) {
+                contactBean.fullName = full.toString();
+            }
+            if (simple.length() > 0) {
+                contactBean.simpleName = simple.toString();
+            }
+            contactBean.bean = charBeans;
+
+            if (simple.length() > 0) {
+                SearchContactsBean sim_contact = new SearchContactsBean();
+                sim_contact.contact_id = contactBean.contact_id;
+                sim_contact.contact_name = contactBean.contact_name;
+                sim_contact.contact_phone = contactBean.contact_phone;
+                sim_contact.photoId = contactBean.photoId;
+                sim_contact.isMplus = contactBean.isMplus;
+                sim_contact.fullName = contactBean.fullName;
+                sim_contact.simpleName = contactBean.simpleName;
+                sim_contact.bean = contactBean.bean;
+                sim_contact.sort_key = contactBean.sort_key;
+                sim_contact.matchType = 0;
+                sim_contact.number = simple.toString();
+                mSort_Key.add(sim_contact);
+            }
+            if (full.length() > 0) {
+                SearchContactsBean full_contact = new SearchContactsBean();
+                full_contact.contact_id = contactBean.contact_id;
+                full_contact.contact_name = contactBean.contact_name;
+                full_contact.contact_phone = contactBean.contact_phone;
+                full_contact.photoId = contactBean.photoId;
+                full_contact.isMplus = contactBean.isMplus;
+                full_contact.fullName = contactBean.fullName;
+                full_contact.simpleName = contactBean.simpleName;
+                full_contact.bean = contactBean.bean;
+                full_contact.sort_key = contactBean.sort_key;
+                full_contact.matchType = 1;
+                full_contact.number = full.toString();
+                mSort_Key.add(full_contact);
+            }
+            String tempPhone = contactBean.contact_phone;
+            if (tempPhone != null && tempPhone.length() > 0) {
+                SearchContactsBean phone_contact = new SearchContactsBean();
+                phone_contact.contact_id = contactBean.contact_id;
+                phone_contact.contact_name = contactBean.contact_name;
+                phone_contact.contact_phone = contactBean.contact_phone;
+                phone_contact.photoId = contactBean.photoId;
+                phone_contact.isMplus = contactBean.isMplus;
+                phone_contact.fullName = contactBean.fullName;
+                phone_contact.simpleName = contactBean.simpleName;
+                phone_contact.bean = contactBean.bean;
+                phone_contact.sort_key = contactBean.sort_key;
+                phone_contact.matchType = 2;
+                phone_contact.number = tempPhone;
+                mSort_Key.add(phone_contact);
+            }
+        }
+    }
