@@ -1,0 +1,134 @@
+---
+title: Tornado中Coroutine的实现
+tags: Tonado,Coroutine,yield,Python,
+---
+
+这两天看了Python中关于yield的相关逻辑，并且一直只是在使用Tornado框架，没有真正的理解其中Coroutine修饰器的内部逻辑，因此，分析了一下，写下这篇作为记录。
+
+## 一、前提概念
+### 1、yield的逻辑
+只要遇到yield，函数或方法就会产生值，然后在此处“挂起”，并保留其全部状态，并把处理器的使用权交给值得接收方，所以他挂起了，但并不会阻塞程序的执行过程。等到下次使用这个函数或方法时，它会从原来的yield后面的那条语句开始执行。
+
+### 2 、协程
+
+
+    def coroutine(function):
+       @functiontools.wraps(function)
+       def wrapper(*args, ** kwargs):
+           result = function(*args, **kwargs):
+           next(result)
+           return result
+       return wrapper
+在上面的函数中，wrapper调用了一次原来的生成器函数function，并把所得的生成器对象赋值给result。这个生成器对象就保存了所有的状态，就相当于原来的生成器函数function,然后wraper调用next函数，生成器就前进道首个yield表达式。然后后生成器及所有状态全部返回继续运行。返回的生成器函数就是协程，等待接收传送过来的值，如其他函数对其传了send(some_value)。调用next（）也可以，这相当于send(None).传值之后，result = some_value, 然后function就会接着向下执行，然后 send() 会返回下一个被 generator yield 的值，如果没有下一个可以 yield 的值则引发一个异常StopIteration。
+
+
+## 二、看看Tornado中Coroutine的源码:
+    def _make_coroutine_wrapper(func, replace_callback):
+        """The inner workings of ``@gen.coroutine`` and ``@gen.engine``.
+
+        The two decorators differ in their treatment of the ``callback``
+        argument, so we cannot simply implement ``@engine`` in terms of
+        ``@coroutine``.
+        """
+        # On Python 3.5, set the coroutine flag on our generator, to allow it
+        # to be used with 'await'.
+        if hasattr(types, 'coroutine'):
+            func = types.coroutine(func)
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            future = TracebackFuture()
+
+            if replace_callback and 'callback' in kwargs:
+                callback = kwargs.pop('callback')
+                IOLoop.current().add_future(
+                    future, lambda future: callback(future.result()))
+
+            try:
+                result = func(*args, **kwargs)
+            except (Return, StopIteration) as e:
+                result = getattr(e, 'value', None)
+            except Exception:
+                future.set_exc_info(sys.exc_info())
+                return future
+            else:
+                if isinstance(result, GeneratorType):
+                    # Inline the first iteration of Runner.run.  This lets us
+                    # avoid the cost of creating a Runner when the coroutine
+                    # never actually yields, which in turn allows us to
+                    # use "optional" coroutines in critical path code without
+                    # performance penalty for the synchronous case.
+                    try:
+                        orig_stack_contexts = stack_context._state.contexts
+                        yielded = next(result)
+                        if stack_context._state.contexts is not orig_stack_contexts:
+                            yielded = TracebackFuture()
+                            yielded.set_exception(
+                                stack_context.StackContextInconsistentError(
+                                    'stack_context inconsistency (probably caused '
+                                    'by yield within a "with StackContext" block)'))
+                    except (StopIteration, Return) as e:
+                        future.set_result(getattr(e, 'value', None))
+                    except Exception:
+                        future.set_exc_info(sys.exc_info())
+                    else:
+                        Runner(result, future, yielded)
+                    try:
+                        return future
+                    finally:
+                        # Subtle memory optimization: if next() raised an exception,
+                        # the future's exc_info contains a traceback which
+                        # includes this stack frame.  This creates a cycle,
+                        # which will be collected at the next full GC but has
+                        # been shown to greatly increase memory usage of
+                        # benchmarks (relative to the refcount-based scheme
+                        # used in the absence of cycles).  We can avoid the
+                        # cycle by clearing the local variable after we return it.
+                        future = None
+            future.set_result(result)
+            return future
+        return wrapper
+ ### 2、源码分析
+ 从代码片段
+ 
+     result = func(*args, **kwargs)
+  执行之后有两种情况：
+  A.当func函数中，有yield语句时，返回的是生成器，类型为GeneratorType，如果执行中没有抛出异常，则会在try-except-else中执行else代码段：
+       
+        ....
+  		else:
+                if isinstance(result, GeneratorType):
+                    .....
+ 之后执行到yielded = next(result),此时，yielded返回的是function中第一个yield后的值，如果没有任何异常，则会执行Runner(result, future, yielded)。
+ 现在来看看Runner的代码：
+ 
+     class Runner(object):
+        """Internal implementation of `tornado.gen.engine`.
+
+        Maintains information about pending callbacks and their results.
+
+        The results of the generator are stored in ``result_future`` (a
+        `.TracebackFuture`)
+        """
+        def __init__(self, gen, result_future, first_yielded):
+            self.gen = gen
+            self.result_future = result_future
+            self.future = _null_future
+            self.yield_point = None
+            self.pending_callbacks = None
+            self.results = None
+            self.running = False
+            self.finished = False
+            self.had_exception = False
+            self.io_loop = IOLoop.current()
+            # For efficiency, we do not create a stack context until we
+            # reach a YieldPoint (stack contexts are required for the historical
+            # semantics of YieldPoints, but not for Futures).  When we have
+            # done so, this field will be set and must be called at the end
+            # of the coroutine.
+            self.stack_context_deactivate = None
+            if self.handle_yield(first_yielded):
+                self.run()
+>参考文献:
+- [2.5版yield之学习心得][1]
+
+[1]: http://zoomq.qiniudn.com/ZQScrapBook/ZqFLOSS/data/20061206220831/index.html
